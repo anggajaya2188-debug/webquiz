@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QuizCraft — Multi Category Edition</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Canvas Confetti CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+  <!-- FontAwesome Icons & Google Fonts -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Tailwind Custom Configuration -->
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+          keyframes: {
+            shake: {
+              '0%, 100%': { transform: 'translateX(0)' },
+              '20%, 60%': { transform: 'translateX(-6px)' },
+              '40%, 80%': { transform: 'translateX(6px)' }
+            },
+            fadeInUp: {
+              '0%': { opacity: '0', transform: 'translateY(16px)' },
+              '100%': { opacity: '1', transform: 'translateY(0)' }
+            },
+            pulseCard: {
+              '0%': { transform: 'scale(1)' },
+              '50%': { transform: 'scale(1.03)' },
+              '100%': { transform: 'scale(1)' }
+            },
+            questionFlip: {
+              '0%': { opacity: '0', transform: 'scale(0.95)' },
+              '100%': { opacity: '1', transform: 'scale(1)' }
+            },
+            ripple: {
+              '0%': { transform: 'scale(0)', opacity: '0.4' },
+              '100%': { transform: 'scale(4)', opacity: '0' }
+            }
+          },
+          animation: {
+            shake: 'shake 0.4s ease-in-out',
+            'fade-in-up': 'fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+            'pulse-card': 'pulseCard 0.25s ease-in-out',
+            'question-enter': 'questionFlip 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards'
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Custom CSS -->
+  <style>
+    .glass-panel {
+      background: rgba(255, 255, 255, 0.75);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.4);
+    }
+
+    .dark .glass-panel {
+      background: rgba(15, 23, 42, 0.8);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .page-transition {
+      transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+
+    .interactive-btn {
+      position: relative;
+      overflow: hidden;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .interactive-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.25);
+    }
+
+    .interactive-btn:active {
+      transform: translateY(1px) scale(0.98);
+    }
+
+    .ripple-effect {
+      position: absolute;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.4);
+      transform: scale(0);
+      animation: ripple 0.6s linear;
+      pointer-events: none;
+    }
+  </style>
+</head>
+
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 min-h-screen flex flex-col font-sans transition-colors duration-300 relative overflow-x-hidden animate-fade-in-up">
+
+  <!-- Ambient Glow Background Blobs -->
+  <div class="absolute top-0 left-1/4 w-96 h-96 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none -z-10 animate-pulse"></div>
+  <div class="absolute bottom-10 right-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl pointer-events-none -z-10"></div>
+
+  <!-- Header / Navbar -->
+  <header class="w-full max-w-4xl mx-auto px-6 py-6 flex items-center justify-between z-10">
+    <div class="flex items-center space-x-3 cursor-pointer group" onclick="createRipple(event); playSound('click'); switchView('home-screen')">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/30 group-hover:scale-110 transition-transform">
+        <i class="fa-solid fa-bolt text-lg"></i>
+      </div>
+      <div>
+        <span class="font-extrabold text-xl tracking-tight bg-gradient-to-r from-indigo-500 to-purple-500 bg-clip-text text-transparent">QuizCraft</span>
+        <span class="block text-[10px] text-slate-400 font-medium uppercase tracking-widest">Multi-Category</span>
+      </div>
+    </div>
+
+    <div class="flex items-center space-x-3">
+      <button onclick="createRipple(event); playSound('click'); switchView('stats-screen')"
+        class="interactive-btn px-3.5 py-2 rounded-xl bg-slate-200/60 dark:bg-slate-800/60 hover:bg-indigo-500/10 hover:text-indigo-500 text-slate-600 dark:text-slate-300 border border-slate-300/50 dark:border-slate-700/60 text-xs font-semibold flex items-center space-x-2">
+        <i class="fa-solid fa-chart-pie text-sm"></i>
+        <span class="hidden sm:inline">Statistik</span>
+      </button>
+      <button onclick="createRipple(event); playSound('click'); toggleDarkMode()"
+        class="interactive-btn w-10 h-10 rounded-xl bg-slate-200/60 dark:bg-slate-800/60 hover:bg-indigo-500/10 hover:text-indigo-500 text-slate-600 dark:text-slate-300 border border-slate-300/50 dark:border-slate-700/60 flex items-center justify-center">
+        <i id="theme-icon" class="fa-solid fa-moon text-sm"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="w-full max-w-xl mx-auto px-4 flex-1 flex items-center justify-center py-6 z-10">
+
+    <!-- 1. HALAMAN BERANDA (HOME) -->
+    <div id="home-screen" class="w-full glass-panel rounded-3xl p-6 sm:p-8 shadow-2xl page-transition animate-fade-in-up">
+      <div class="text-center mb-6">
+        <span class="inline-block px-3.5 py-1 rounded-full bg-indigo-500/10 text-indigo-500 dark:text-indigo-400 text-xs font-semibold tracking-wide uppercase mb-3 border border-indigo-500/20">
+          Pilih Kategori Kuis
+        </span>
+        <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight mb-2">Uji Wawasanmu Sekarang</h1>
+        <p class="text-slate-500 dark:text-slate-400 text-xs sm:text-sm max-w-md mx-auto leading-relaxed">Sentuh salah satu topik di bawah untuk memulai sesi kuis dengan 5 pertanyaan menarik.</p>
+      </div>
+
+      <!-- Daftar Kategori -->
+      <div class="space-y-3 mb-6 max-h-[320px] overflow-y-auto pr-1">
+        <button onclick="createRipple(event); handleCategorySelect('programming', this)"
+          class="interactive-btn w-full group text-left p-3.5 rounded-2xl bg-white/50 dark:bg-slate-900/40 hover:bg-indigo-600/[0.06] border border-slate-200/80 dark:border-slate-800 hover:border-indigo-500/50 flex items-center justify-between shadow-sm">
+          <div class="flex items-center space-x-3.5">
+            <div class="w-10 h-10 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-lg group-hover:scale-110 transition-transform">
+              <i class="fa-solid fa-code"></i>
+            </div>
+            <div>
+              <h3 class="font-bold text-sm text-slate-800 dark:text-slate-200">Pemrograman & OOP</h3>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400">Java, Web, & Logika</p>
+            </div>
+          </div>
+          <i class="fa-solid fa-chevron-right text-xs text-slate-400 group-hover:text-indigo-500 transition-colors"></i>
+        </button>
+
+        <button onclick="createRipple(event); handleCategorySelect('microcontroller', this)"
+          class="interactive-btn w-full group text-left p-3.5 rounded-2xl bg-white/50 dark:bg-slate-900/40 hover:bg-emerald-600/[0.06] border border-slate-200/80 dark:border-slate-800 hover:border-emerald-500/50 flex items-center justify-between shadow-sm">
+          <div class="flex items-center space-x-3.5">
+            <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-lg group-hover:scale-110 transition-transform">
+              <i class="fa-solid fa-microchip"></i>
+            </div>
+            <div>
+              <h3 class="font-bold text-sm text-slate-800 dark:text-slate-200">Mikrokontroler & IoT</h3>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400">Arduino, Sensor, & ESP8266</p>
+            </div>
+          </div>
+          <i class="fa-solid fa-chevron-right text-xs text-slate-400 group-hover:text-emerald-500 transition-colors"></i>
+        </button>
+
+        <button onclick="createRipple(event); handleCategorySelect('bindonesia', this)"
+          class="interactive-btn w-full group text-left p-3.5 rounded-2xl bg-white/50 dark:bg-slate-900/40 hover:bg-amber-600/[0.06] border border-slate-200/80 dark:border-slate-800 hover:border-amber-500/50 flex items-center justify-between shadow-sm">
+          <div class="flex items-center space-x-3.5">
+            <div class="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center text-lg group-hover:scale-110 transition-transform">
+              <i class="fa-solid fa-book-open"></i>
+            </div>
+            <div>
+              <h3 class="font-bold text-sm text-slate-800 dark:text-slate-200">Bahasa Indonesia</h3>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400">Ejaan, Sinonim, & EYD</p>
+            </div>
+          </div>
+          <i class="fa-solid fa-chevron-right text-xs text-slate-400 group-hover:text-amber-500 transition-colors"></i>
+        </button>
+
+        <button onclick="createRipple(event); handleCategorySelect('agama', this)"
+          class="interactive-btn w-full group text-left p-3.5 rounded-2xl bg-white/50 dark:bg-slate-900/40 hover:bg-teal-600/[0.06] border border-slate-200/80 dark:border-slate-800 hover:border-teal-500/50 flex items-center justify-between shadow-sm">
+          <div class="flex items-center space-x-3.5">
+            <div class="w-10 h-10 rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400 flex items-center justify-center text-lg group-hover:scale-110 transition-transform">
+              <i class="fa-solid fa-mosque"></i>
+            </div>
+            <div>
+              <h3 class="font-bold text-sm text-slate-800 dark:text-slate-200">Pendidikan Agama</h3>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400">Rukun, Sejarah, & Peribadatan</p>
+            </div>
+          </div>
+          <i class="fa-solid fa-chevron-right text-xs text-slate-400 group-hover:text-teal-500 transition-colors"></i>
+        </button>
+
+        <button onclick="createRipple(event); handleCategorySelect('politik', this)"
+          class="interactive-btn w-full group text-left p-3.5 rounded-2xl bg-white/50 dark:bg-slate-900/40 hover:bg-sky-600/[0.06] border border-slate-200/80 dark:border-slate-800 hover:border-sky-500/50 flex items-center justify-between shadow-sm">
+          <div class="flex items-center space-x-3.5">
+            <div class="w-10 h-10 rounded-xl bg-sky-500/10 text-sky-600 dark:text-sky-400 flex items-center justify-center text-lg group-hover:scale-110 transition-transform">
+              <i class="fa-solid fa-landmark"></i>
+            </div>
+            <div>
+              <h3 class="font-bold text-sm text-slate-800 dark:text-slate-200">Politik & Kenegaraan</h3>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400">Pancasila, UUD, & Pemerintahan</p>
+            </div>
+          </div>
+          <i class="fa-solid fa-chevron-right text-xs text-slate-400 group-hover:text-sky-500 transition-colors"></i>
+        </button>
+
+        <button onclick="createRipple(event); handleCategorySelect('kimia', this)"
+          class="interactive-btn w-full group text-left p-3.5 rounded-2xl bg-white/50 dark:bg-slate-900/40 hover:bg-rose-600/[0.06] border border-slate-200/80 dark:border-slate-800 hover:border-rose-500/50 flex items-center justify-between shadow-sm">
+          <div class="flex items-center space-x-3.5">
+            <div class="w-10 h-10 rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center text-lg group-hover:scale-110 transition-transform">
+              <i class="fa-solid fa-flask"></i>
+            </div>
+            <div>
+              <h3 class="font-bold text-sm text-slate-800 dark:text-slate-200">Kimia & Unsur</h3>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400">Tabel Periodik, pH, & Senyawa</p>
+            </div>
+          </div>
+          <i class="fa-solid fa-chevron-right text-xs text-slate-400 group-hover:text-rose-500 transition-colors"></i>
+        </button>
+
+        <button onclick="createRipple(event); handleCategorySelect('olahraga', this)"
+          class="interactive-btn w-full group text-left p-3.5 rounded-2xl bg-white/50 dark:bg-slate-900/40 hover:bg-purple-600/[0.06] border border-slate-200/80 dark:border-slate-800 hover:border-purple-500/50 flex items-center justify-between shadow-sm">
+          <div class="flex items-center space-x-3.5">
+            <div class="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center text-lg group-hover:scale-110 transition-transform">
+              <i class="fa-solid fa-futbol"></i>
+            </div>
+            <div>
+              <h3 class="font-bold text-sm text-slate-800 dark:text-slate-200">Olahraga & Prestasi</h3>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400">Sepak Bola, Olimpiade, & Aturan</p>
+            </div>
+          </div>
+          <i class="fa-solid fa-chevron-right text-xs text-slate-400 group-hover:text-purple-500 transition-colors"></i>
+        </button>
+
+        <button onclick="createRipple(event); handleCategorySelect('fisika', this)"
+          class="interactive-btn w-full group text-left p-3.5 rounded-2xl bg-white/50 dark:bg-slate-900/40 hover:bg-blue-600/[0.06] border border-slate-200/80 dark:border-slate-800 hover:border-blue-500/50 flex items-center justify-between shadow-sm">
+          <div class="flex items-center space-x-3.5">
+            <div class="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center text-lg group-hover:scale-110 transition-transform">
+              <i class="fa-solid fa-atom"></i>
+            </div>
+            <div>
+              <h3 class="font-bold text-sm text-slate-800 dark:text-slate-200">Sains Fisika</h3>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400">Gaya, Energi, & Gerak</p>
+            </div>
+          </div>
+          <i class="fa-solid fa-chevron-right text-xs text-slate-400 group-hover:text-blue-500 transition-colors"></i>
+        </button>
+
+        <button onclick="createRipple(event); handleCategorySelect('english', this)"
+          class="interactive-btn w-full group text-left p-3.5 rounded-2xl bg-white/50 dark:bg-slate-900/40 hover:bg-orange-600/[0.06] border border-slate-200/80 dark:border-slate-800 hover:border-orange-500/50 flex items-center justify-between shadow-sm">
+          <div class="flex items-center space-x-3.5">
+            <div class="w-10 h-10 rounded-xl bg-orange-500/10 text-orange-600 dark:text-orange-400 flex items-center justify-center text-lg group-hover:scale-110 transition-transform">
+              <i class="fa-solid fa-language"></i>
+            </div>
+            <div>
+              <h3 class="font-bold text-sm text-slate-800 dark:text-slate-200">Bahasa Inggris (English)</h3>
+              <p class="text-[11px] text-slate-500 dark:text-slate-400">Grammar, Tenses, & Vocabulary</p>
+            </div>
+          </div>
+          <i class="fa-solid fa-chevron-right text-xs text-slate-400 group-hover:text-orange-500 transition-colors"></i>
+        </button>
+      </div>
+
+      <!-- Ringkasan Singkat -->
+      <div class="grid grid-cols-2 gap-3 pt-4 border-t border-slate-200/60 dark:border-slate-800/60 text-center">
+        <div>
+          <span class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold">Total Selesai</span>
+          <span id="home-total-quizzes" class="text-lg font-bold text-slate-700 dark:text-slate-200">0</span>
+        </div>
+        <div>
+          <span class="block text-[11px] uppercase tracking-wider text-slate-400 font-semibold">Skor Tertinggi</span>
+          <span id="home-best-score" class="text-lg font-bold text-indigo-500">0</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. HALAMAN KUIS BERJALAN -->
+    <div id="quiz-screen" class="hidden w-full glass-panel rounded-3xl p-6 sm:p-8 shadow-2xl page-transition animate-question-enter">
+      <div class="flex items-center justify-between mb-6">
+        <span id="question-counter" class="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 bg-indigo-500/10 px-3 py-1.5 rounded-xl border border-indigo-500/20">
+          Pertanyaan 1 dari 5
+        </span>
+        <div class="flex items-center space-x-2 text-slate-700 dark:text-slate-300 font-semibold bg-white/60 dark:bg-slate-900/60 px-3.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+          <i class="fa-regular fa-clock text-amber-500 animate-pulse"></i>
+          <span id="timer" class="text-sm font-bold">15s</span>
+        </div>
+      </div>
+
+      <!-- Progress Bar -->
+      <div class="w-full bg-slate-200 dark:bg-slate-800 h-2 rounded-full mb-6 overflow-hidden">
+        <div id="progress-bar" class="bg-gradient-to-r from-indigo-500 to-purple-600 h-full w-0 transition-all duration-300 rounded-full"></div>
+      </div>
+
+      <!-- Pertanyaan -->
+      <h2 id="question-text" class="text-lg sm:text-xl font-bold mb-6 text-slate-800 dark:text-slate-100 leading-relaxed">
+        Memuat pertanyaan...
+      </h2>
+
+      <!-- Opsi Jawaban -->
+      <div id="options-container" class="space-y-3 mb-6"></div>
+
+      <!-- Tombol Lanjut -->
+      <button id="next-btn" onclick="createRipple(event); playSound('click'); nextQuestion()"
+        class="interactive-btn hidden w-full py-3.5 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-2xl shadow-lg shadow-indigo-600/35 flex items-center justify-center space-x-2 animate-fade-in-up">
+        <span>Pertanyaan Selanjutnya</span>
+        <i class="fa-solid fa-arrow-right text-xs"></i>
+      </button>
+    </div>
+
+    <!-- 3. HALAMAN HASIL AKHIR -->
+    <div id="result-screen" class="hidden w-full glass-panel rounded-3xl p-6 sm:p-8 shadow-2xl text-center page-transition animate-fade-in-up">
+      <div class="inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-amber-500/10 text-amber-500 mb-5 shadow-inner border border-amber-500/20">
+        <i class="fa-solid fa-award text-4xl"></i>
+      </div>
+
+      <h2 class="text-2xl font-extrabold mb-1">Kuis Selesai!</h2>
+      <p id="result-message" class="text-slate-500 dark:text-slate-400 text-sm mb-6">Performa luar biasa dalam sesi ini.</p>
+
+      <div class="bg-white/50 dark:bg-slate-900/50 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-800 mb-6 flex justify-around items-center shadow-sm">
+        <div>
+          <span class="block text-[11px] text-slate-400 uppercase tracking-wider font-semibold mb-1">Total Skor</span>
+          <span id="final-score" class="text-3xl font-black text-indigo-600 dark:text-indigo-400">0</span>
+        </div>
+        <div class="h-10 w-px bg-slate-200 dark:bg-slate-800"></div>
+        <div>
+          <span class="block text-[11px] text-slate-400 uppercase tracking-wider font-semibold mb-1">Benar</span>
+          <span id="correct-count" class="text-3xl font-black text-emerald-500">0 / 5</span>
+        </div>
+      </div>
+
+      <div class="space-y-2.5">
+        <button onclick="createRipple(event); playSound('click'); restartCurrentQuiz()"
+          class="interactive-btn w-full py-3.5 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-2xl shadow-lg shadow-indigo-600/30 flex items-center justify-center space-x-2">
+          <i class="fa-solid fa-rotate-right text-xs"></i>
+          <span>Coba Lagi Kategori Ini</span>
+        </button>
+        <button onclick="createRipple(event); playSound('click'); switchView('home-screen')"
+          class="interactive-btn w-full py-3 px-4 bg-slate-200/70 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold rounded-2xl text-sm">
+          Kembali ke Beranda
+        </button>
+      </div>
+    </div>
+
+    <!-- 4. HALAMAN STATISTIK -->
+    <div id="stats-screen" class="hidden w-full glass-panel rounded-3xl p-6 sm:p-8 shadow-2xl page-transition animate-fade-in-up">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <h2 class="text-xl font-extrabold">Statistik & Riwayat</h2>
+          <p class="text-xs text-slate-400 mt-0.5">Rekap aktivitas kuis Anda</p>
+        </div>
+        <button onclick="createRipple(event); playSound('click'); switchView('home-screen')"
+          class="interactive-btn w-9 h-9 rounded-xl bg-slate-200/60 dark:bg-slate-800 flex items-center justify-center text-slate-500 hover:text-indigo-500">
+          <i class="fa-solid fa-xmark text-sm"></i>
+        </button>
+      </div>
+
+      <div class="grid grid-cols-2 gap-3 mb-6">
+        <div class="bg-white/50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800">
+          <span class="text-xs text-slate-400 uppercase tracking-wider font-semibold block mb-1">Total Kuis</span>
+          <span id="stat-total-count" class="text-2xl font-black text-slate-800 dark:text-slate-100">0</span>
+        </div>
+        <div class="bg-white/50 dark:bg-slate-900/50 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800">
+          <span class="text-xs text-slate-400 uppercase tracking-wider font-semibold block mb-1">Akurasi Rata-rata</span>
+          <span id="stat-avg-accuracy" class="text-2xl font-black text-emerald-500">0%</span>
+        </div>
+      </div>
+
+      <div class="mb-6">
+        <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Aktivitas Terakhir</h3>
+        <div id="history-list" class="space-y-2.5 max-h-48 overflow-y-auto pr-1"></div>
+      </div>
+
+      <button onclick="createRipple(event); playSound('click'); clearHistory()"
+        class="interactive-btn w-full py-2.5 px-4 bg-rose-500/15 hover:bg-rose-500/25 text-rose-500 font-semibold rounded-xl text-xs border border-rose-500/30 flex items-center justify-center space-x-2">
+        <i class="fa-solid fa-trash-can text-xs"></i>
+        <span>Hapus Riwayat</span>
+      </button>
+    </div>
+
+  </main>
+
+  <footer class="py-4 text-center text-xs text-slate-400 z-10">
+    QuizCraft Multi-Category Edition &copy; 2026
+  </footer>
+
+  <!-- JavaScript Logic -->
+  <script>
+    let audioCtx = null;
+
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+
+    function createRipple(event) {
+      const button = event.currentTarget;
+      const circle = document.createElement('span');
+      const diameter = Math.max(button.clientWidth, button.clientHeight);
+      const radius = diameter / 2;
+
+      circle.style.width = circle.style.height = `${diameter}px`;
+      circle.style.left = `${event.clientX - button.getBoundingClientRect().left - radius}px`;
+      circle.style.top = `${event.clientY - button.getBoundingClientRect().top - radius}px`;
+      circle.classList.add('ripple-effect');
+
+      const ripple = button.getElementsByClassName('ripple-effect')[0];
+      if (ripple) {
+        ripple.remove();
+      }
+
+      button.appendChild(circle);
+    }
+
+    function playSound(type) {
+      initAudio();
+      if (!audioCtx) return;
+      const now = audioCtx.currentTime;
+
+      if (type === 'welcome') {
+        [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now + idx * 0.08);
+          gain.gain.setValueAtTime(0.06, now + idx * 0.08);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.08 + 0.3);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(now + idx * 0.08);
+          osc.stop(now + idx * 0.08 + 0.3);
+        });
+      } else if (type === 'click') {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(440, now);
+        gain.gain.setValueAtTime(0.05, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.06);
+      } else if (type === 'pop') {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(300, now);
+        osc.frequency.exponentialRampToValueAtTime(650, now + 0.08);
+        gain.gain.setValueAtTime(0.1, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.08);
+      } else if (type === 'correct') {
+        [587.33, 880].forEach((freq, idx) => {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now + idx * 0.1);
+          gain.gain.setValueAtTime(0.08, now + idx * 0.1);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.1 + 0.25);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(now + idx * 0.1);
+          osc.stop(now + idx * 0.1 + 0.25);
+        });
+      } else if (type === 'incorrect') {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(220, now);
+        osc.frequency.exponentialRampToValueAtTime(110, now + 0.25);
+        gain.gain.setValueAtTime(0.05, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now);
+        osc.stop(now + 0.25);
+      } else if (type === 'finish') {
+        [440, 554.37, 659.25, 880, 1108.73].forEach((freq, idx) => {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now + idx * 0.09);
+          gain.gain.setValueAtTime(0.08, now + idx * 0.09);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.09 + 0.35);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(now + idx * 0.09);
+          osc.stop(now + idx * 0.09 + 0.35);
+        });
+      }
+    }
+
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        playSound('welcome');
+        confetti({
+          particleCount: 80,
+          spread: 80,
+          origin: { y: 0.5 },
+          colors: ['#6366f1', '#a855f7', '#ec4899', '#3b82f6', '#fbbf24']
+        });
+      }, 300);
+      updateGlobalStatsUI();
+    });
+
+    const quizData = {
+      programming: [
+        { question: "Apa singkatan dari OOP dalam pemrograman?", options: ["Object Oriented Programming", "Order Operational Process", "Open Online Protocol", "Optimized Object Procedure"], correct: 0 },
+        { question: "Manakah bahasa pemrograman berbasis web client-side?", options: ["Python", "JavaScript", "C++", "Java"], correct: 1 },
+        { question: "Keyword apa di Java yang digunakan untuk inheritance kelas?", options: ["implements", "extends", "inherits", "super"], correct: 1 },
+        { question: "Struktur data mana yang bekerja dengan prinsip LIFO (Last In, First Out)?", options: ["Queue", "Stack", "Array", "Tree"], correct: 1 },
+        { question: "Manakah yang termasuk tipe data primitif di dalam bahasa pemrograman Java?", options: ["String", "Integer", "Scanner", "ArrayList"], correct: 1 }
+      ],
+      microcontroller: [
+        { question: "Mikrokontroler mana yang populer untuk koneksi Wi-Fi IoT?", options: ["Arduino Uno", "NodeMCU ESP8266", "ATmega328P", "Raspberry Pi Pico"], correct: 1 },
+        { question: "Sensor apakah yang digunakan untuk membaca kartu RFID secara nirkabel?", options: ["Sensor Suhu DHT11", "RFID RC522", "Sensor Ultrasonik HC-SR04", "PIR Motion Sensor"], correct: 1 },
+        { question: "Komponen manakah yang berfungsi sebagai output suara sederhana?", options: ["Buzzer", "Resistor", "Potensiometer", "Photodioda"], correct: 0 },
+        { question: "Berapa besar tegangan operasi standar untuk pin digital pada mikrokontroler Arduino Uno?", options: ["3.3 Volt", "5 Volt", "12 Volt", "220 Volt"], correct: 1 },
+        { question: "Software resmi yang umum digunakan untuk menulis dan mengunggah kode ke Arduino adalah...", options: ["Visual Studio Code", "Arduino IDE", "Sublime Text", "NetBeans"], correct: 1 }
+      ],
+      bindonesia: [
+        { question: "Apa bentuk penulisan kata baku yang benar di bawah ini?", options: ["Apotik", "Apotek", "Sistem", "Masa'alah"], correct: 1 },
+        { question: "Gagasan utama atau ide pokok dalam sebuah paragraf biasanya terletak di...", options: ["Kalimat utama", "Kalimat penjelas", "Tanda baca", "Kesimpulan akhir"], correct: 0 },
+        { question: "Sinonim dari kata 'canggih' adalah...", options: ["Kuno", "Modern", "Rumit", "Sederhana"], correct: 1 },
+        { question: "Kata depan (preposisi) yang menunjukkan tempat dan ditulis terpisah adalah...", options: ["Di-", "Ke", "Mei", "Pun"], correct: 1 },
+        { question: "Kalimat yang memiliki satu klausa disebut juga sebagai kalimat...", options: ["Majemuk setara", "Majemuk bertingkat", "Tunggal", "Langsung"], correct: 2 }
+      ],
+      agama: [
+        { question: "Berapa jumlah rukun Islam yang wajib diketahui oleh setiap muslim?", options: ["3", "4", "5", "6"], correct: 2 },
+        { question: "Malaikat yang bertugas menyampaikan wahyu kepada para nabi dan rasul adalah...", options: ["Mikail", "Israfil", "Malik", "Jibril"], correct: 3 },
+        { question: "Kitab suci yang diturunkan kepada Nabi Isa AS adalah...", options: ["Taurat", "Zabur", "Injil", "Al-Qur'an"], correct: 2 },
+        { question: "Siapakah nama khalifah pertama dari Khulafaur Rasyidin?", options: ["Umar bin Khattab", "Utsman bin Affan", "Abu Bakar Ash-Shiddiq", "Ali bin Abi Thalib"], correct: 2 },
+        { question: "Ibadah puasa di bulan Ramadhan merupakan hukumnya...", options: ["Sunnah muakkad", "Fardhu 'ain", "Fardhu kifayah", "Mubah"], correct: 1 }
+      ],
+      politik: [
+        { question: "Dasar negara Republik Indonesia adalah...", options: ["UUD 1945", "Pancasila", "Bhinneka Tunggal Ika", "NKRI"], correct: 1 },
+        { question: "Lembaga negara yang memegang kekuasaan legislatif di Indonesia adalah...", options: ["Mahkamah Konstitusi", "MPR / DPR", "Presiden dan Menteri", "Komisi Yudisial"], correct: 1 },
+        { question: "Sistem pemerintahan di Indonesia menganut sistem...", options: ["Monarki", "Otokrasi", "Presidensial", "Parlementer murni"], correct: 2 },
+        { question: "Sila ke-4 dari Pancasila dilambangkan dengan gambar...", options: ["Pohon Beringin", "Kepala Banteng", "Rantai Emas", "Padi dan Kapas"], correct: 1 },
+        { question: "Siapakah tokoh yang dikenal sebagai Proklamator Kemerdekaan Indonesia bersama Mohammad Hatta?", options: ["Soekarno", "Sutan Sjahrir", "Ki Hajar Dewantara", "Diponegoro"], correct: 0 }
+      ],
+      kimia: [
+        { question: "Lambang unsur kimia untuk air adalah...", options: ["CO2", "H2O", "NaCl", "O2"], correct: 1 },
+        { question: "Larutan yang memiliki pH kurang dari 7 dikategorikan sebagai...", options: ["Basa", "Netral", "Asam", "Garam"], correct: 2 },
+        { question: "Unsur kimia dengan lambang 'Au' merujuk pada logam...", options: ["Perak", "Tembaga", "Besi", "Emas"], correct: 3 },
+        { question: "Gas yang paling banyak terkandung di dalam atmosfer bumi adalah...", options: ["Oksigen", "Nitrogen", "Karbon Dioksida", "Hidrogen"], correct: 1 },
+        { question: "Nomor atom dari unsur Karbon (C) di dalam tabel periodik adalah...", options: ["6", "8", "12", "14"], correct: 0 }
+      ],
+      olahraga: [
+        { question: "Berapa jumlah pemain inti dalam satu tim sepak bola di lapangan?", options: ["10 orang", "11 orang", "12 orang", "7 orang"], correct: 1 },
+        { question: "Induk organisasi bulu tangkis dunia (BWF) bermarkas di negara...", options: ["Indonesia", "Malaysia", "Swiss", "Inggris"], correct: 2 },
+        { question: "Teknik memantul-mantulkan bola ke lantai dalam permainan bola basket disebut...", options: ["Passing", "Shooting", "Dribbling", "Rebound"], correct: 2 },
+        { question: "Berapa panjang ukuran standar lapangan sepak bola internasional (FIFA)?", options: ["90 - 120 meter", "50 - 70 meter", "200 meter", "30 meter"], correct: 0 },
+        { question: "Nomor lari jarak pendek yang paling umum dilombakan dalam atletik adalah...", options: ["100 meter", "800 meter", "5000 meter", "Maraton"], correct: 0 }
+      ],
+      fisika: [
+        { question: "Satuan SI untuk gaya dalam fisika adalah...", options: ["Joule", "Newton", "Watt", "Pascal"], correct: 1 },
+        { question: "Hukum Newton manakah yang menyatakan bahwa F = m x a?", options: ["Hukum I Newton", "Hukum II Newton", "Hukum III Newton", "Hukum Kekekalan Energi"], correct: 1 },
+        { question: "Cepat rambat cahaya di dalam ruang hampa udara kira-kira bernilai...", options: ["300.000 km/s", "3.000 km/s", "340 m/s", "1.500 m/s"], correct: 0 },
+        { question: "Alat yang digunakan untuk mengukur kuat arus listrik dalam suatu rangkaian adalah...", options: ["Voltmeter", "Amperemeter", "Ohmmeter", "Termometer"], correct: 1 },
+        { question: "Energi yang dimiliki oleh benda karena kedudukan atau posisinya disebut energi...", options: ["Kinetik", "Potensial", "Mekanik", "Termal"], correct: 1 }
+      ],
+      english: [
+        { question: "What is the past tense of the verb 'go'?", options: ["Goed", "Gone", "Went", "Going"], correct: 2 },
+        { question: "Choose the correct sentence structure:", options: ["She play football everyday.", "She plays football everyday.", "She playing football everyday.", "She played football everyday (future)."], correct: 1 },
+        { question: "What is the synonym of the word 'happy'?", options: ["Sad", "Angry", "Joyful", "Tired"], correct: 2 },
+        { question: "Which one is a plural noun?", options: ["Child", "Children", "Man", "Woman"], correct: 1 },
+        { question: "Complete the sentence: 'If I ___ rich, I would travel the world.'", options: ["am", "were", "will be", "have been"], correct: 1 }
+      ]
+    };
+
+    let currentCategory = '';
+    let currentQuestions = [];
+    let currentQuestionIndex = 0;
+    let score = 0;
+    let correctCount = 0;
+    let timer;
+    let timeLeft = 15;
+    let isAnswered = false;
+    let userHistory = JSON.parse(localStorage.getItem('quiz_history')) || [];
+
+    function switchView(viewId) {
+      ['home-screen', 'quiz-screen', 'result-screen', 'stats-screen'].forEach(id => {
+        document.getElementById(id).classList.add('hidden');
+      });
+      const target = document.getElementById(viewId);
+      target.classList.remove('hidden');
+      target.classList.remove('animate-fade-in-up');
+      void target.offsetWidth;
+      target.classList.add('animate-fade-in-up');
+
+      if (viewId === 'home-screen' || viewId === 'stats-screen') {
+        updateGlobalStatsUI();
+      }
+    }
+
+    function handleCategorySelect(category, element) {
+      playSound('click');
+      element.classList.add('animate-pulse-card', 'ring-2', 'ring-indigo-500', 'bg-indigo-500/10');
+      setTimeout(() => {
+        startQuiz(category);
+      }, 250);
+    }
+
+    function startQuiz(category) {
+      currentCategory = category;
+      currentQuestions = quizData[category];
+      currentQuestionIndex = 0;
+      score = 0;
+      correctCount = 0;
+      switchView('quiz-screen');
+      loadQuestion();
+    }
+
+    function restartCurrentQuiz() {
+      startQuiz(currentCategory);
+    }
+
+    function loadQuestion() {
+      resetState();
+      if (currentQuestionIndex < currentQuestions.length) {
+        const q = currentQuestions[currentQuestionIndex];
+
+        const quizScreen = document.getElementById('quiz-screen');
+        quizScreen.classList.remove('animate-question-enter');
+        void quizScreen.offsetWidth;
+        quizScreen.classList.add('animate-question-enter');
+
+        document.getElementById('question-text').textContent = q.question;
+        document.getElementById('question-counter').textContent = `Pertanyaan ${currentQuestionIndex + 1} dari ${currentQuestions.length}`;
+
+        const progressPercentage = ((currentQuestionIndex) / currentQuestions.length) * 100;
+        document.getElementById('progress-bar').style.width = `${progressPercentage}%`;
+
+        const optionsContainer = document.getElementById('options-container');
+        q.options.forEach((option, index) => {
+          const button = document.createElement('button');
+          button.textContent = option;
+          button.className = "interactive-btn w-full text-left p-3.5 rounded-2xl bg-white/60 dark:bg-slate-900/60 hover:bg-indigo-500/[0.04] border border-slate-200/80 dark:border-slate-800 text-slate-700 dark:text-slate-200 text-sm font-medium flex items-center justify-between shadow-sm";
+          button.onclick = (e) => {
+            createRipple(e);
+            selectOption(index, button, e);
+          };
+          optionsContainer.appendChild(button);
+        });
+
+        startTimer();
+      } else {
+        finishQuiz();
+      }
+    }
+
+    function resetState() {
+      clearInterval(timer);
+      timeLeft = 15;
+      document.getElementById('timer').textContent = `${timeLeft}s`;
+      isAnswered = false;
+      document.getElementById('next-btn').classList.add('hidden');
+      document.getElementById('options-container').innerHTML = '';
+    }
+
+    function startTimer() {
+      timer = setInterval(() => {
+        timeLeft--;
+        document.getElementById('timer').textContent = `${timeLeft}s`;
+        if (timeLeft <= 0) {
+          clearInterval(timer);
+          handleTimeOut();
+        }
+      }, 1000);
+    }
+
+    function handleTimeOut() {
+      if (isAnswered) return;
+      isAnswered = true;
+      playSound('incorrect');
+      const q = currentQuestions[currentQuestionIndex];
+      const buttons = document.getElementById('options-container').children;
+
+      buttons[q.correct].classList.add('bg-emerald-500/20', 'border-emerald-500', 'text-emerald-700', 'dark:text-emerald-300', 'scale-[1.02]');
+      disableAllOptions();
+      document.getElementById('next-btn').classList.remove('hidden');
+    }
+
+    function selectOption(selectedIndex, buttonElement, event) {
+      if (isAnswered) return;
+      isAnswered = true;
+      clearInterval(timer);
+
+      playSound('pop');
+
+      const q = currentQuestions[currentQuestionIndex];
+      const buttons = document.getElementById('options-container').children;
+
+      if (selectedIndex === q.correct) {
+        setTimeout(() => playSound('correct'), 80);
+        buttonElement.classList.add('bg-emerald-500/20', 'border-emerald-500', 'text-emerald-700', 'dark:text-emerald-300', 'scale-[1.02]', 'shadow-md');
+        score += 20;
+        correctCount++;
+
+        const rect = buttonElement.getBoundingClientRect();
+        const x = (rect.left + rect.width / 2) / window.innerWidth;
+        const y = (rect.top + rect.height / 2) / window.innerHeight;
+
+        confetti({
+          particleCount: 35,
+          spread: 60,
+          origin: { x: x, y: y },
+          colors: ['#10b981', '#34d399', '#fbbf24']
+        });
+      } else {
+        setTimeout(() => playSound('incorrect'), 80);
+        buttonElement.classList.add('bg-rose-500/20', 'border-rose-500', 'text-rose-700', 'dark:text-rose-300', 'animate-shake');
+        buttons[q.correct].classList.add('bg-emerald-500/20', 'border-emerald-500', 'text-emerald-700', 'dark:text-emerald-300', 'scale-[1.02]');
+      }
+
+      disableAllOptions();
+
+      setTimeout(() => {
+        document.getElementById('next-btn').classList.remove('hidden');
+      }, 250);
+    }
+
+    function disableAllOptions() {
+      Array.from(document.getElementById('options-container').children).forEach(btn => {
+        btn.style.pointerEvents = 'none';
+      });
+    }
+
+    function nextQuestion() {
+      currentQuestionIndex++;
+      loadQuestion();
+    }
+
+    function finishQuiz() {
+      playSound('finish');
+      switchView('result-screen');
+      document.getElementById('progress-bar').style.width = `100%`;
+      document.getElementById('final-score').textContent = score;
+      document.getElementById('correct-count').textContent = `${correctCount} / ${currentQuestions.length}`;
+
+      const resultMessage = document.getElementById('result-message');
+      if (correctCount === currentQuestions.length) {
+        resultMessage.textContent = "Sempurna! Kamu merajai seluruh soal dengan gemilang! 🌟";
+        triggerGrandCelebration();
+      } else {
+        resultMessage.textContent = "Kerja bagus! Terus asah kemampuanmu. 👍";
+        triggerMiniCelebration();
+      }
+
+      const record = {
+        category: currentCategory,
+        score: score,
+        correct: correctCount,
+        total: currentQuestions.length,
+        date: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+      };
+      userHistory.push(record);
+      localStorage.setItem('quiz_history', JSON.stringify(userHistory));
+    }
+
+    function triggerGrandCelebration() {
+      const duration = 2.5 * 1000;
+      const animationEnd = Date.now() + duration;
+      const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
+
+      const interval = setInterval(function () {
+        const timeLeft = animationEnd - Date.now();
+        if (timeLeft <= 0) return clearInterval(interval);
+        const particleCount = 50 * (timeLeft / duration);
+        confetti(Object.assign({}, defaults, { particleCount, origin: { x: 0.2, y: 0.3 }, colors: ['#fbbf24', '#6366f1', '#ec4899', '#10b981'], shapes: ['star'] }));
+        confetti(Object.assign({}, defaults, { particleCount, origin: { x: 0.8, y: 0.3 }, colors: ['#fbbf24', '#6366f1', '#ec4899', '#10b981'], shapes: ['star'] }));
+      }, 250);
+    }
+
+    function triggerMiniCelebration() {
+      confetti({
+        particleCount: 50,
+        spread: 80,
+        origin: { y: 0.5 },
+        colors: ['#6366f1', '#3b82f6', '#10b981']
+      });
+    }
+
+    function updateGlobalStatsUI() {
+      const total = userHistory.length;
+      const best = total > 0 ? Math.max(...userHistory.map(h => h.score)) : 0;
+      document.getElementById('home-total-quizzes').textContent = total;
+      document.getElementById('home-best-score').textContent = best;
+      document.getElementById('stat-total-count').textContent = total;
+
+      if (total > 0) {
+        const sumCorrect = userHistory.reduce((a, b) => a + b.correct, 0);
+        const sumTotal = userHistory.reduce((a, b) => a + b.total, 0);
+        document.getElementById('stat-avg-accuracy').textContent = `${Math.round((sumCorrect / sumTotal) * 100)}%`;
+      } else {
+        document.getElementById('stat-avg-accuracy').textContent = `0%`;
+      }
+
+      const historyEl = document.getElementById('history-list');
+      historyEl.innerHTML = total === 0 ? `<p class="text-xs text-slate-400 text-center py-4">Belum ada riwayat kuis.</p>` :
+        userHistory.slice().reverse().map(item => `
+          <div class="flex items-center justify-between p-3 rounded-xl bg-white/40 dark:bg-slate-900/40 border border-slate-200/60 dark:border-slate-800 text-xs">
+            <div>
+              <span class="font-bold uppercase">${item.category}</span>
+              <span class="block text-[10px] text-slate-400">${item.date}</span>
+            </div>
+            <div class="text-right">
+              <span class="font-bold text-indigo-500">${item.score} Pts</span>
+              <span class="block text-[10px] text-emerald-500">${item.correct}/${item.total} Benar</span>
+            </div>
+          </div>
+        `).join('');
+    }
+
+    function clearHistory() {
+      if (confirm("Hapus semua riwayat kuis?")) {
+        userHistory = [];
+        localStorage.removeItem('quiz_history');
+        updateGlobalStatsUI();
+      }
+    }
+
+    function toggleDarkMode() {
+      const html = document.documentElement;
+      const icon = document.getElementById('theme-icon');
+      if (html.classList.contains('dark')) {
+        html.classList.remove('dark');
+        icon.className = "fa-solid fa-sun text-sm";
+      } else {
+        html.classList.add('dark');
+        icon.className = "fa-solid fa-moon text-sm";
+      }
+    }
+  </script>
+</body>
+
+</html>
